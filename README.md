@@ -205,7 +205,7 @@ OPENAI_API_KEY=your-openai-api-key
 # AWS
 AWS_ACCESS_KEY_ID=your-aws-access-key
 AWS_SECRET_ACCESS_KEY=your-aws-secret-key
-AWS_REGION=us-east-1
+AWS_REGION=eu-central-1
 S3_BUCKET=edusloth-files
 ```
 

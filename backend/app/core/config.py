@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     # AWS
     AWS_ACCESS_KEY_ID: str = "your-aws-access-key"
     AWS_SECRET_ACCESS_KEY: str = "your-aws-secret-key"
-    AWS_REGION: str = "us-east-1"
+    AWS_REGION: str = "eu-central-1"
     S3_BUCKET: str = "edusloth-files"
     S3_ACCESS_KEY: str = "minioadmin"
     S3_SECRET_KEY: str = "minioadmin"

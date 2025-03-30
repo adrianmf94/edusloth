@@ -1,0 +1,5 @@
+environment = "dev"
+project_name = "edusloth"
+aws_region = "eu-central-1"
+aws_profile = "edusloth-dev"
+aws_assume_role_arn = "" # Optional, for cross-account access 
