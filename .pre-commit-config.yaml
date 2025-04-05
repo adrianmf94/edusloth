@@ -1,0 +1,56 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+    -   id: check-yaml
+    -   id: check-toml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+    -   id: check-added-large-files # Prevent giant files from being committed.
+
+# Python Backend Hooks (primarily in ./backend)
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 'v0.5.5' # Use a recent version
+    hooks:
+    -   id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/ # Only run on backend files
+    -   id: ruff-format
+        files: ^backend/ # Only run on backend files
+-   repo: https://github.com/psf/black
+    rev: 24.8.0 # Use a recent version
+    hooks:
+    -   id: black
+        files: ^backend/ # Only run on backend files
+        # You might want to configure black via pyproject.toml if needed
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'v1.11.1' # Use a recent version
+    hooks:
+    -   id: mypy
+        # files: ^backend/ # Let mypy use the files/exclude from the config file
+        args: [--config-file, backend/pyproject.toml] # Explicitly point to the config
+        # Mypy configuration is now in backend/pyproject.toml
+        additional_dependencies: [types-requests, types-redis] # Add types for libs used in backend
+
+# Frontend Hooks (primarily in ./frontend)
+-   repo: https://github.com/pre-commit/mirrors-prettier
+    rev: 'v4.0.0-alpha.8' # Use a version compatible with your project
+    hooks:
+    -   id: prettier
+        files: ^frontend/.*\.(js|jsx|ts|tsx|json|css|scss|md)$ # Run on relevant frontend files
+        # Prettier usually reads config from .prettierrc or package.json
+-   repo: https://github.com/pre-commit/mirrors-eslint
+    rev: 'v9.9.0' # Use a version compatible with your project's eslint
+    hooks:
+    -   id: eslint
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$ # Run on relevant frontend files
+        # ESLint usually reads config from .eslintrc.*, eslint.config.mjs or package.json
+        additional_dependencies: # Ensure pre-commit uses dependencies from your frontend project
+          - eslint@^9
+          - eslint-config-next@^15 # Match versions in frontend/package.json
+          - typescript@^5
+          - '@types/react@^19'
+          # Add any other relevant eslint plugins/configs from your package.json
+        entry: npx eslint --fix # Use npx to run the local eslint installation

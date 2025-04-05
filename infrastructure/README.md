@@ -43,7 +43,7 @@ For each environment, run the included script to create the S3 bucket and Dynamo
 # For staging environment (when needed)
 # ./setup-terraform-state.sh -e staging -r eu-central-1 -p edusloth-staging
 
-# For production environment (when needed)  
+# For production environment (when needed)
 # ./setup-terraform-state.sh -e prod -r eu-central-1 -p edusloth-prod
 ```
 
@@ -158,4 +158,4 @@ terraform fmt -recursive
 - Resources are tagged with `Environment` and `Project` for cost allocation
 - Lifecycle policies are applied to S3 buckets to reduce storage costs
 - Use `terraform plan` before `apply` to review resource changes and estimate costs
-- Regularly run `aws ce get-cost-and-usage` to monitor your AWS spending 
+- Regularly run `aws ce get-cost-and-usage` to monitor your AWS spending

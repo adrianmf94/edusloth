@@ -38,4 +38,4 @@ class ContentDetail(Content):
     generated_contents: List[GeneratedContent] = []
 
     class Config:
-        from_attributes = True 
+        from_attributes = True

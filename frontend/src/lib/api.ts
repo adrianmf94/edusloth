@@ -1,23 +1,23 @@
-import axios from 'axios';
+import axios from "axios";
 
 // Create an Axios instance with default config
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Request interceptor for adding auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor for handling errors
@@ -26,25 +26,25 @@ api.interceptors.response.use(
   (error) => {
     // Handle 401 Unauthorized
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem("token");
+      window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Authentication
 export const login = async (email: string, password: string) => {
   const formData = new FormData();
-  formData.append('username', email); // OAuth2 uses 'username' field even for email
-  formData.append('password', password);
-  
-  const response = await api.post('/auth/login', formData, {
+  formData.append("username", email); // OAuth2 uses 'username' field even for email
+  formData.append("password", password);
+
+  const response = await api.post("/auth/login", formData, {
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded",
     },
   });
-  
+
   return response.data;
 };
 
@@ -53,10 +53,10 @@ export const register = async (userData: {
   password: string;
   full_name?: string;
 }) => {
-  const response = await api.post('/auth/register', userData, {
+  const response = await api.post("/auth/register", userData, {
     headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      "Content-Type": "application/json",
+      Accept: "application/json",
     },
   });
   return response.data;
@@ -64,22 +64,25 @@ export const register = async (userData: {
 
 // User
 export const getCurrentUser = async () => {
-  const response = await api.get('/users/me');
+  const response = await api.get("/users/me");
   return response.data;
 };
 
 // Content
 export const uploadContent = async (data: FormData) => {
-  const response = await api.post('/content/upload', data, {
+  const response = await api.post("/content/upload", data, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      "Content-Type": "multipart/form-data",
     },
   });
   return response.data;
 };
 
-export const getUserContent = async (params?: { skip?: number; limit?: number }) => {
-  const response = await api.get('/content', { params });
+export const getUserContent = async (params?: {
+  skip?: number;
+  limit?: number;
+}) => {
+  const response = await api.get("/content", { params });
   return response.data;
 };
 
@@ -100,8 +103,13 @@ export const getTranscription = async (contentId: string) => {
 };
 
 // AI Generation
-export const startGeneration = async (contentId: string, generationType: string) => {
-  const response = await api.post(`/ai/generate/${contentId}/${generationType}`);
+export const startGeneration = async (
+  contentId: string,
+  generationType: string,
+) => {
+  const response = await api.post(
+    `/ai/generate/${contentId}/${generationType}`,
+  );
   return response.data;
 };
 
@@ -110,23 +118,28 @@ export const getGeneratedContent = async (contentId: string) => {
   return response.data;
 };
 
-export const getSpecificGeneratedContent = async (contentId: string, generationType: string) => {
-  const response = await api.get(`/ai/generated/${contentId}/${generationType}`);
+export const getSpecificGeneratedContent = async (
+  contentId: string,
+  generationType: string,
+) => {
+  const response = await api.get(
+    `/ai/generated/${contentId}/${generationType}`,
+  );
   return response.data;
 };
 
 // Reminders
-export const getReminders = async (params?: { 
-  skip?: number; 
+export const getReminders = async (params?: {
+  skip?: number;
   limit?: number;
   include_completed?: boolean;
 }) => {
-  const response = await api.get('/reminders', { params });
+  const response = await api.get("/reminders", { params });
   return response.data;
 };
 
 export const getUpcomingReminders = async (days: number = 7) => {
-  const response = await api.get('/reminders/upcoming', { params: { days } });
+  const response = await api.get("/reminders/upcoming", { params: { days } });
   return response.data;
 };
 
@@ -136,7 +149,7 @@ export const createReminder = async (reminderData: {
   priority?: string;
   content_id?: string;
 }) => {
-  const response = await api.post('/reminders', reminderData);
+  const response = await api.post("/reminders", reminderData);
   return response.data;
 };
 
@@ -147,7 +160,7 @@ export const updateReminder = async (
     due_date?: string;
     priority?: string;
     is_completed?: boolean;
-  }
+  },
 ) => {
   const response = await api.put(`/reminders/${reminderId}`, data);
   return response.data;
@@ -158,4 +171,4 @@ export const deleteReminder = async (reminderId: string) => {
   return response.data;
 };
 
-export default api; 
+export default api;

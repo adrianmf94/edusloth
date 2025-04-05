@@ -1,0 +1,37 @@
+[tool.mypy]
+# mypy_path = "app" # Removed, potentially redundant with 'files'
+
+# Ignore missing imports for libraries that don't have stubs easily available
+# You might need to add more depending on your dependencies
+ignore_missing_imports = true
+
+# Treat Optional as implicitly non-None in most contexts
+strict_optional = true
+
+# Disallow functions without type annotations
+disallow_untyped_defs = true
+
+# Warn about variables inferred as Any
+warn_return_any = true
+warn_unused_ignores = true
+
+# Specify the source files for Mypy relative to this pyproject.toml
+files = ["app"]
+
+# Exclude specific files or directories if needed
+# Paths are relative to this pyproject.toml (i.e., the backend directory)
+exclude = [
+    "app/api/api.py", # Exclude top-level api router
+    "main.py"         # Exclude top-level main.py
+]
+
+# Allow redefinition of variables (useful in some patterns, e.g., FastAPI dependencies)
+allow_redefinition = false # Set to true if needed, but start with false
+
+# Help Mypy resolve namespace packages / duplicate module names
+# This assumes 'app' is the main source directory
+namespace_packages = true
+explicit_package_bases = true
+
+# Show error codes in output
+show_error_codes = true

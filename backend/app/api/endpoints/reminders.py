@@ -20,13 +20,15 @@ def create_reminder(
     """
     # If content_id provided, verify it exists and belongs to the user
     if reminder_in.content_id:
-        content = content_service.get(id=reminder_in.content_id, user_id=current_user.id)
+        content = content_service.get(
+            id=reminder_in.content_id, user_id=current_user.id
+        )
         if not content:
             raise HTTPException(
                 status_code=404,
                 detail="Content not found or does not belong to you",
             )
-    
+
     return reminder_service.create_reminder(
         user_id=current_user.id,
         content_id=reminder_in.content_id,
@@ -108,7 +110,7 @@ def update_reminder(
             status_code=404,
             detail="Reminder not found",
         )
-    
+
     updated_reminder = reminder_service.update_reminder(
         reminder_id=reminder_id,
         user_id=current_user.id,
@@ -117,7 +119,7 @@ def update_reminder(
         priority=reminder_in.priority,
         is_completed=reminder_in.is_completed,
     )
-    
+
     return updated_reminder
 
 
@@ -138,6 +140,6 @@ def delete_reminder(
             status_code=404,
             detail="Reminder not found",
         )
-    
+
     reminder_service.delete_reminder(reminder_id=reminder_id, user_id=current_user.id)
-    return {"message": "Reminder deleted"} 
+    return {"message": "Reminder deleted"}

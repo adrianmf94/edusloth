@@ -1,16 +1,23 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import MainLayout from '@/components/layout/MainLayout';
-import { useAuthStore } from '@/lib/store/authStore';
-import { useReminderStore } from '@/lib/store/reminderStore';
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import MainLayout from "@/components/layout/MainLayout";
+import { useAuthStore } from "@/lib/store/authStore";
+import { useReminderStore } from "@/lib/store/reminderStore";
 
 const ReminderPage = () => {
   const router = useRouter();
   const { isAuthenticated, checkAuth } = useAuthStore();
-  const { reminders, fetchReminders, completeReminder, removeReminder, isLoading, error } = useReminderStore();
+  const {
+    reminders,
+    fetchReminders,
+    completeReminder,
+    removeReminder,
+    isLoading,
+    error,
+  } = useReminderStore();
   const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
@@ -18,14 +25,14 @@ const ReminderPage = () => {
       // Check if user is authenticated, redirect to login if not
       await checkAuth();
       if (!useAuthStore.getState().isAuthenticated) {
-        router.push('/login');
+        router.push("/login");
         return;
       }
-      
+
       // Fetch reminders including completed if showCompleted is true
       await fetchReminders(showCompleted);
     };
-    
+
     initialize();
   }, [checkAuth, router, fetchReminders, showCompleted]);
 
@@ -38,7 +45,7 @@ const ReminderPage = () => {
   };
 
   const handleDeleteReminder = async (reminderId: string) => {
-    if (window.confirm('Are you sure you want to delete this reminder?')) {
+    if (window.confirm("Are you sure you want to delete this reminder?")) {
       await removeReminder(reminderId);
     }
   };
@@ -86,7 +93,9 @@ const ReminderPage = () => {
                 onChange={(e) => setShowCompleted(e.target.checked)}
                 className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
               />
-              <span className="ml-2 text-gray-700">Show completed reminders</span>
+              <span className="ml-2 text-gray-700">
+                Show completed reminders
+              </span>
             </label>
           </div>
         </div>
@@ -105,9 +114,9 @@ const ReminderPage = () => {
             ) : sortedReminders.length === 0 ? (
               <div className="text-center py-6">
                 <p className="text-gray-500">
-                  {showCompleted 
-                    ? 'No reminders found.'
-                    : 'No active reminders. Add a reminder to get started.'}
+                  {showCompleted
+                    ? "No reminders found."
+                    : "No active reminders. Add a reminder to get started."}
                 </p>
               </div>
             ) : (
@@ -116,32 +125,39 @@ const ReminderPage = () => {
                   <div
                     key={reminder.id}
                     className={`p-4 border rounded-lg ${
-                      reminder.is_completed 
-                        ? 'bg-gray-50 border-gray-200' 
-                        : 'border-indigo-200 bg-white'
+                      reminder.is_completed
+                        ? "bg-gray-50 border-gray-200"
+                        : "border-indigo-200 bg-white"
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-md font-medium ${
-                          reminder.is_completed ? 'text-gray-500 line-through' : 'text-gray-900'
-                        }`}>
+                        <p
+                          className={`text-md font-medium ${
+                            reminder.is_completed
+                              ? "text-gray-500 line-through"
+                              : "text-gray-900"
+                          }`}
+                        >
                           {reminder.description}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            reminder.is_completed
-                              ? 'bg-gray-100 text-gray-800'
-                              : getPriorityStyle(reminder.priority)
-                          }`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              reminder.is_completed
+                                ? "bg-gray-100 text-gray-800"
+                                : getPriorityStyle(reminder.priority)
+                            }`}
+                          >
                             {reminder.priority}
                           </span>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Due: {new Date(reminder.due_date).toLocaleDateString()}
+                            Due:{" "}
+                            {new Date(reminder.due_date).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="mt-3 sm:mt-0 sm:ml-4 flex space-x-2">
                         {!reminder.is_completed && (
                           <button
@@ -173,15 +189,15 @@ const ReminderPage = () => {
 // Utility function to get the appropriate style for priority
 const getPriorityStyle = (priority: string) => {
   switch (priority.toLowerCase()) {
-    case 'high':
-      return 'bg-red-100 text-red-800';
-    case 'medium':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'low':
-      return 'bg-green-100 text-green-800';
+    case "high":
+      return "bg-red-100 text-red-800";
+    case "medium":
+      return "bg-yellow-100 text-yellow-800";
+    case "low":
+      return "bg-green-100 text-green-800";
     default:
-      return 'bg-gray-100 text-gray-800';
+      return "bg-gray-100 text-gray-800";
   }
 };
 
-export default ReminderPage; 
+export default ReminderPage;

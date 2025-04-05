@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { ReactNode } from 'react';
-import Navbar from './Navbar';
-import { useAuthStore } from '@/lib/store/authStore';
+import React, { ReactNode } from "react";
+import Navbar from "./Navbar";
+import { useAuthStore } from "@/lib/store/authStore";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -10,19 +10,17 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   const { user } = useAuthStore();
-  
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       {user && <Navbar />}
-      
+
       {/* Main content */}
       <main className="flex-grow">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          {children}
-        </div>
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">{children}</div>
       </main>
-      
+
       {/* Footer */}
       <footer className="bg-white">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -35,4 +33,4 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   );
 };
 
-export default MainLayout; 
+export default MainLayout;

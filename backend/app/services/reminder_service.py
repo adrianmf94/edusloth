@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from app.db.session import reminders_collection
 
@@ -26,7 +26,7 @@ def create_reminder(
         "is_completed": False,
         "created_at": datetime.utcnow(),
     }
-    
+
     reminders_collection.insert_one(reminder)
     return reminder
 
@@ -35,7 +35,8 @@ def get_reminder(reminder_id: str, user_id: str) -> Optional[dict]:
     """
     Get a reminder by ID.
     """
-    return reminders_collection.find_one({"id": reminder_id, "user_id": user_id})
+    result = reminders_collection.find_one({"id": reminder_id, "user_id": user_id})
+    return dict(result) if result else None
 
 
 def get_reminders_by_user(
@@ -47,10 +48,11 @@ def get_reminders_by_user(
     """
     Get reminders for a user.
     """
-    query = {"user_id": user_id}
+    query: Dict[str, Any] = {"user_id": user_id}
     if not include_completed:
-        query["is_completed"] = False
-    
+        # Cast boolean to string for MongoDB query if needed
+        query["is_completed"] = str(False)  # Assuming DB expects string
+
     return list(
         reminders_collection.find(query)
         .sort("due_date", 1)  # Sort by due date ascending
@@ -65,16 +67,15 @@ def get_upcoming_reminders(user_id: str, days: int = 7) -> List[dict]:
     """
     now = datetime.utcnow()
     end_date = now + timedelta(days=days)
-    
+
     return list(
-        reminders_collection.find({
-            "user_id": user_id,
-            "is_completed": False,
-            "due_date": {
-                "$gte": now,
-                "$lte": end_date
+        reminders_collection.find(
+            {
+                "user_id": user_id,
+                "is_completed": False,
+                "due_date": {"$gte": now, "$lte": end_date},
             }
-        }).sort("due_date", 1)
+        ).sort("due_date", 1)
     )
 
 
@@ -92,31 +93,33 @@ def update_reminder(
     reminder = get_reminder(reminder_id=reminder_id, user_id=user_id)
     if not reminder:
         return None
-    
-    update_data = {}
-    
+
+    update_data: Dict[str, Any] = {}
+
     if description is not None:
         update_data["description"] = description
-    
+
     if due_date is not None:
-        update_data["due_date"] = due_date
-    
+        # Cast datetime to string (ISO format) for MongoDB update if needed
+        update_data["due_date"] = due_date.isoformat()
+
     if priority is not None:
         update_data["priority"] = priority
-    
+
     if is_completed is not None:
-        update_data["is_completed"] = is_completed
-    
+        # Cast boolean to string for MongoDB update if needed
+        update_data["is_completed"] = str(is_completed)
+
     if not update_data:
         return reminder
-    
-    update_data["updated_at"] = datetime.utcnow()
-    
+
+    # Cast datetime to string (ISO format) for MongoDB update if needed
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+
     reminders_collection.update_one(
-        {"id": reminder_id, "user_id": user_id},
-        {"$set": update_data}
+        {"id": reminder_id, "user_id": user_id}, {"$set": update_data}
     )
-    
+
     return get_reminder(reminder_id=reminder_id, user_id=user_id)
 
 
@@ -125,7 +128,7 @@ def delete_reminder(reminder_id: str, user_id: str) -> bool:
     Delete a reminder.
     """
     result = reminders_collection.delete_one({"id": reminder_id, "user_id": user_id})
-    return result.deleted_count > 0
+    return bool(result.deleted_count > 0)
 
 
 def generate_auto_reminders_from_content(content_id: str, user_id: str) -> List[dict]:
@@ -141,9 +144,9 @@ def generate_auto_reminders_from_content(content_id: str, user_id: str) -> List[
         content_id=content_id,
         description="Review this content to reinforce your learning",
         due_date=review_date,
-        priority="medium"
+        priority="medium",
     )
-    
+
     # Create a follow-up reminder for a week later
     follow_up_date = datetime.utcnow() + timedelta(days=7)
     follow_up = create_reminder(
@@ -151,7 +154,7 @@ def generate_auto_reminders_from_content(content_id: str, user_id: str) -> List[
         content_id=content_id,
         description="Final review of this content",
         due_date=follow_up_date,
-        priority="medium"
+        priority="medium",
     )
-    
-    return [reminder, follow_up] 
+
+    return [reminder, follow_up]

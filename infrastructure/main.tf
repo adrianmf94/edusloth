@@ -10,7 +10,7 @@ provider "aws" {
 
 module "s3_buckets" {
   source = "./modules/s3"
-  
+
   environment = var.environment
   project_name = var.project_name
 }
@@ -31,4 +31,4 @@ terraform {
       version = "~> 4.0"
     }
   }
-} 
+}

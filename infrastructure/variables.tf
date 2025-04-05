@@ -26,4 +26,4 @@ variable "aws_assume_role_arn" {
   description = "Role ARN to assume for cross-account access"
   type        = string
   default     = ""
-} 
+}

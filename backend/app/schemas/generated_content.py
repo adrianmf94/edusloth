@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -29,7 +29,7 @@ class GeneratedContent(BaseModel):
     status: str  # "pending", "processing", "completed", "failed"
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+
     # Dynamic content based on type
     summary: Optional[str] = None
     flashcards: Optional[List[FlashCard]] = None
@@ -38,4 +38,4 @@ class GeneratedContent(BaseModel):
     error: Optional[str] = None
 
     class Config:
-        from_attributes = True 
+        from_attributes = True

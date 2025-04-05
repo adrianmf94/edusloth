@@ -1,7 +1,6 @@
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import JSONResponse
 
 from app import schemas
 from app.api import deps
@@ -27,13 +26,13 @@ async def upload_content(
     file_content = await file.read()
     content_size = len(file_content)
     await file.seek(0)  # Reset file pointer
-    
+
     if content_size > 100 * 1024 * 1024:  # 100MB limit
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="File too large (max 100MB)",
         )
-    
+
     # Process the upload
     result = await content_service.create_content(
         user_id=current_user.id,
@@ -42,13 +41,13 @@ async def upload_content(
         content_type=content_type,
         file=file,
     )
-    
+
     if not result:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to upload content",
         )
-    
+
     return result
 
 
@@ -100,4 +99,4 @@ def delete_content(
             detail="Content not found",
         )
     content_service.remove(id=content_id, user_id=current_user.id)
-    return {"message": "Content successfully deleted"} 
+    return {"message": "Content successfully deleted"}

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, List
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
@@ -28,7 +28,7 @@ def start_generation(
             status_code=404,
             detail="Content not found",
         )
-    
+
     # Validate generation type
     valid_types = ["summary", "flashcards", "quiz", "mindmap"]
     if generation_type not in valid_types:
@@ -36,7 +36,7 @@ def start_generation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid generation type. Must be one of: {', '.join(valid_types)}",
         )
-    
+
     # For audio/video, check if transcription exists
     if content["content_type"] in ["audio", "video"]:
         transcription = transcription_service.get_by_content(content_id=content_id)
@@ -45,15 +45,15 @@ def start_generation(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Transcription must be completed before generating AI content",
             )
-    
+
     # Start generation in background
     background_tasks.add_task(
         ai_service.start_generation,
         content_id=content_id,
         user_id=current_user.id,
-        generation_type=generation_type
+        generation_type=generation_type,
     )
-    
+
     return {"message": f"{generation_type.capitalize()} generation started"}
 
 
@@ -73,11 +73,13 @@ def get_generated_content(
             status_code=404,
             detail="Content not found",
         )
-    
+
     return ai_service.get_generated_content(content_id=content_id)
 
 
-@router.get("/generated/{content_id}/{generation_type}", response_model=schemas.GeneratedContent)
+@router.get(
+    "/generated/{content_id}/{generation_type}", response_model=schemas.GeneratedContent
+)
 def get_specific_generated_content(
     *,
     content_id: str,
@@ -94,7 +96,7 @@ def get_specific_generated_content(
             status_code=404,
             detail="Content not found",
         )
-    
+
     # Validate generation type
     valid_types = ["summary", "flashcards", "quiz", "mindmap"]
     if generation_type not in valid_types:
@@ -102,15 +104,15 @@ def get_specific_generated_content(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid generation type. Must be one of: {', '.join(valid_types)}",
         )
-    
+
     result = ai_service.get_specific_generated_content(
         content_id=content_id, generation_type=generation_type
     )
-    
+
     if not result:
         raise HTTPException(
             status_code=404,
             detail=f"No {generation_type} found for this content",
         )
-    
-    return result 
+
+    return result

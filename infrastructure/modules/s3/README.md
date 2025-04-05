@@ -38,7 +38,7 @@ All buckets include lifecycle policies to:
 ```hcl
 module "s3_buckets" {
   source = "./modules/s3"
-  
+
   environment = var.environment
   project_name = var.project_name
 }
@@ -55,4 +55,4 @@ module "s3_buckets" {
 | document_upload_bucket_arn | ARN of document uploads bucket |
 | audio_upload_bucket_arn | ARN of audio recordings bucket |
 | transcription_bucket_arn | ARN of transcriptions bucket |
-| ai_generation_bucket_arn | ARN of AI-generated content bucket | 
+| ai_generation_bucket_arn | ARN of AI-generated content bucket |

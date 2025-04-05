@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { getUserContent, getContentDetails, uploadContent } from '../api';
+import { create } from "zustand";
+import { getUserContent, getContentDetails, uploadContent } from "../api";
 
 interface Content {
   id: string;
@@ -33,7 +33,7 @@ interface ContentState {
   currentContent: ContentDetail | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   fetchContents: () => Promise<void>;
   fetchContentDetails: (contentId: string) => Promise<void>;
@@ -45,7 +45,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
   currentContent: null,
   isLoading: false,
   error: null,
-  
+
   fetchContents: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -54,11 +54,11 @@ export const useContentStore = create<ContentState>((set, get) => ({
     } catch (error: any) {
       set({
         isLoading: false,
-        error: error.response?.data?.detail || 'Failed to fetch contents',
+        error: error.response?.data?.detail || "Failed to fetch contents",
       });
     }
   },
-  
+
   fetchContentDetails: async (contentId: string) => {
     set({ isLoading: true, error: null });
     try {
@@ -68,30 +68,31 @@ export const useContentStore = create<ContentState>((set, get) => ({
     } catch (error: any) {
       set({
         isLoading: false,
-        error: error.response?.data?.detail || 'Failed to fetch content details',
+        error:
+          error.response?.data?.detail || "Failed to fetch content details",
       });
       return null;
     }
   },
-  
+
   uploadNewContent: async (formData: FormData) => {
     set({ isLoading: true, error: null });
     try {
       const newContent = await uploadContent(formData);
-      
+
       // Update the content list with the new content
-      set(state => ({
+      set((state) => ({
         contents: [newContent, ...state.contents],
         isLoading: false,
       }));
-      
+
       return newContent;
     } catch (error: any) {
       set({
         isLoading: false,
-        error: error.response?.data?.detail || 'Failed to upload content',
+        error: error.response?.data?.detail || "Failed to upload content",
       });
       return null;
     }
   },
-})); 
+}));

@@ -18,4 +18,4 @@ python-dotenv==1.0.0
 pydub==0.25.1
 openai-whisper==20240930
 email-validator==2.2.0
-PyPDF2==3.0.1 
+PyPDF2==3.0.1

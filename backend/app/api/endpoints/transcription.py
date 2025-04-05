@@ -26,14 +26,14 @@ def start_transcription(
             status_code=404,
             detail="Content not found",
         )
-    
+
     # Check if content is audio
     if content.content_type not in ["audio", "video"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Content must be audio or video to transcribe",
         )
-    
+
     # Check if transcription already exists
     existing = transcription_service.get_by_content(content_id=content_id)
     if existing and existing.status == "completed":
@@ -41,14 +41,14 @@ def start_transcription(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Transcription already exists for this content",
         )
-    
+
     # Start transcription in background
     background_tasks.add_task(
         transcription_service.create_transcription,
         content_id=content_id,
-        user_id=current_user.id
+        user_id=current_user.id,
     )
-    
+
     return {"message": "Transcription started"}
 
 
@@ -68,12 +68,12 @@ def get_transcription(
             status_code=404,
             detail="Content not found",
         )
-    
+
     transcription = transcription_service.get_by_content(content_id=content_id)
     if not transcription:
         raise HTTPException(
             status_code=404,
             detail="Transcription not found",
         )
-    
-    return transcription 
+
+    return transcription

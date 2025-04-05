@@ -16,4 +16,4 @@ output "transcription_bucket" {
 output "ai_generation_bucket" {
   description = "S3 bucket for AI-generated content"
   value       = module.s3_buckets.ai_generation_bucket
-} 
+}

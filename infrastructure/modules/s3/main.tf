@@ -180,4 +180,4 @@ resource "aws_s3_bucket_lifecycle_configuration" "ai_generation" {
       storage_class = "STANDARD_IA"
     }
   }
-} 
+}

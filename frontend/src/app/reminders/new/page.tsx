@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import MainLayout from '@/components/layout/MainLayout';
-import { useAuthStore } from '@/lib/store/authStore';
-import { useReminderStore } from '@/lib/store/reminderStore';
-import Link from 'next/link';
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import MainLayout from "@/components/layout/MainLayout";
+import { useAuthStore } from "@/lib/store/authStore";
+import { useReminderStore } from "@/lib/store/reminderStore";
+import Link from "next/link";
 
 const NewReminderPage = () => {
   const router = useRouter();
   const { isAuthenticated, checkAuth } = useAuthStore();
   const { createReminder, isLoading, error } = useReminderStore();
-  
-  const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState<string>('medium');
+
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [priority, setPriority] = useState<string>("medium");
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,40 +22,40 @@ const NewReminderPage = () => {
       // Check if user is authenticated, redirect to login if not
       await checkAuth();
       if (!useAuthStore.getState().isAuthenticated) {
-        router.push('/login');
+        router.push("/login");
         return;
       }
     };
-    
+
     initialize();
   }, [checkAuth, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate inputs
     if (!description.trim()) {
-      setLocalError('Description is required');
+      setLocalError("Description is required");
       return;
     }
-    
+
     if (!dueDate) {
-      setLocalError('Due date is required');
+      setLocalError("Due date is required");
       return;
     }
-    
+
     // Clear previous errors
     setLocalError(null);
-    
+
     // Create reminder
     const success = await createReminder({
       description,
       due_date: dueDate,
       priority,
     });
-    
+
     if (success) {
-      router.push('/reminders');
+      router.push("/reminders");
     }
   };
 
@@ -63,7 +63,7 @@ const NewReminderPage = () => {
   useEffect(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    setDueDate(tomorrow.toISOString().split('T')[0]);
+    setDueDate(tomorrow.toISOString().split("T")[0]);
   }, []);
 
   if (!isAuthenticated) {
@@ -76,7 +76,9 @@ const NewReminderPage = () => {
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">Create Reminder</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Create Reminder
+              </h1>
               <div className="mt-3 sm:mt-0 flex gap-3">
                 <Link
                   href="/reminders"
@@ -98,7 +100,10 @@ const NewReminderPage = () => {
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Description
               </label>
               <textarea
@@ -111,9 +116,12 @@ const NewReminderPage = () => {
                 required
               />
             </div>
-            
+
             <div>
-              <label htmlFor="due-date" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="due-date"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Due Date
               </label>
               <input
@@ -125,9 +133,12 @@ const NewReminderPage = () => {
                 required
               />
             </div>
-            
+
             <div>
-              <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="priority"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Priority
               </label>
               <select
@@ -141,14 +152,14 @@ const NewReminderPage = () => {
                 <option value="high">High</option>
               </select>
             </div>
-            
+
             <div className="flex flex-col space-y-2">
               <button
                 type="submit"
                 disabled={isLoading}
                 className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
-                {isLoading ? 'Creating...' : 'Create Reminder'}
+                {isLoading ? "Creating..." : "Create Reminder"}
               </button>
             </div>
           </form>
@@ -158,4 +169,4 @@ const NewReminderPage = () => {
   );
 };
 
-export default NewReminderPage; 
+export default NewReminderPage;

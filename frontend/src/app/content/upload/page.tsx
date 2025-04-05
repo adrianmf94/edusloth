@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import MainLayout from '@/components/layout/MainLayout';
-import { useAuthStore } from '@/lib/store/authStore';
-import { uploadContent } from '@/lib/api';
-import Link from 'next/link';
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import MainLayout from "@/components/layout/MainLayout";
+import { useAuthStore } from "@/lib/store/authStore";
+import { uploadContent } from "@/lib/api";
+import Link from "next/link";
 
 const ContentUploadPage = () => {
   const router = useRouter();
   const { isAuthenticated, checkAuth } = useAuthStore();
-  
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,67 +23,73 @@ const ContentUploadPage = () => {
       // Check if user is authenticated, redirect to login if not
       await checkAuth();
       if (!useAuthStore.getState().isAuthenticated) {
-        router.push('/login');
+        router.push("/login");
         return;
       }
     };
-    
+
     initialize();
   }, [checkAuth, router]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
-    
+
     setFile(selectedFile);
-    
+
     // Create a preview for PDFs and images
-    if (selectedFile.type === 'application/pdf' || selectedFile.type.startsWith('image/')) {
+    if (
+      selectedFile.type === "application/pdf" ||
+      selectedFile.type.startsWith("image/")
+    ) {
       const fileUrl = URL.createObjectURL(selectedFile);
       setFilePreview(fileUrl);
     } else {
       setFilePreview(null);
     }
-    
+
     // Auto-set title from filename if not already set
     if (!title) {
-      const fileName = selectedFile.name.replace(/\.[^/.]+$/, ''); // Remove extension
+      const fileName = selectedFile.name.replace(/\.[^/.]+$/, ""); // Remove extension
       setTitle(fileName);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!file) {
-      setError('Please select a file to upload');
+      setError("Please select a file to upload");
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Determine content type based on file type
-      let content_type = 'document';
-      if (file.type.startsWith('audio/')) {
-        content_type = 'audio';
+      let content_type = "document";
+      if (file.type.startsWith("audio/")) {
+        content_type = "audio";
       }
-      
+
       // Create form data
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('title', title);
-      formData.append('description', description);
-      formData.append('content_type', content_type);
-      
+      formData.append("file", file);
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("content_type", content_type);
+
       // Upload content
       const response = await uploadContent(formData);
-      
+
       // Navigate to the content detail page
       router.push(`/content/${response.id}`);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to upload content. Please try again.');
+      setError(
+        err.response?.data?.detail ||
+          "Failed to upload content. Please try again.",
+      );
       setIsLoading(false);
     }
   };
@@ -98,7 +104,9 @@ const ContentUploadPage = () => {
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">Upload Content</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Upload Content
+              </h1>
               <div className="mt-3 sm:mt-0 flex gap-3">
                 <Link
                   href="/content"
@@ -120,7 +128,10 @@ const ContentUploadPage = () => {
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Title
               </label>
               <input
@@ -133,9 +144,12 @@ const ContentUploadPage = () => {
                 required
               />
             </div>
-            
+
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Description (Optional)
               </label>
               <textarea
@@ -147,7 +161,7 @@ const ContentUploadPage = () => {
                 placeholder="Add a description of your content"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 File
@@ -196,44 +210,44 @@ const ContentUploadPage = () => {
                 </div>
               </div>
             </div>
-            
-            {filePreview && file?.type.startsWith('image/') && (
+
+            {filePreview && file?.type.startsWith("image/") && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Preview
                 </label>
                 <div className="mt-1 bg-gray-100 rounded-md overflow-hidden">
-                  <img 
-                    src={filePreview} 
-                    alt="Preview" 
+                  <img
+                    src={filePreview}
+                    alt="Preview"
                     className="max-h-64 mx-auto object-contain"
                   />
                 </div>
               </div>
             )}
-            
-            {filePreview && file?.type === 'application/pdf' && (
+
+            {filePreview && file?.type === "application/pdf" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Preview
                 </label>
                 <div className="mt-1 bg-gray-100 rounded-md overflow-hidden h-64">
-                  <iframe 
-                    src={filePreview} 
-                    title="PDF Preview" 
+                  <iframe
+                    src={filePreview}
+                    title="PDF Preview"
                     className="w-full h-full"
                   />
                 </div>
               </div>
             )}
-            
+
             <div>
               <button
                 type="submit"
                 disabled={isLoading || !file}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
-                {isLoading ? 'Uploading...' : 'Upload Content'}
+                {isLoading ? "Uploading..." : "Upload Content"}
               </button>
             </div>
           </form>
@@ -245,13 +259,13 @@ const ContentUploadPage = () => {
 
 // Utility function to format file size
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
-  
+  if (bytes === 0) return "0 Bytes";
+
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
-export default ContentUploadPage; 
+export default ContentUploadPage;

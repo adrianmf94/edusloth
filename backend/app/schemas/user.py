@@ -1,7 +1,7 @@
 from typing import Optional, Any
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
 
 # Shared properties
@@ -27,11 +27,11 @@ class UserUpdate(UserBase):
 class User(UserBase):
     id: str
     created_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
         populate_by_name = True
-        
+
     # Allow MongoDB _id to be mapped to id field
     @classmethod
     def from_mongo(cls, data: dict[str, Any]) -> "User":
@@ -41,4 +41,4 @@ class User(UserBase):
         """
         if data and "_id" in data and "id" not in data:
             data["id"] = str(data["_id"])
-        return cls(**data) 
+        return cls(**data)

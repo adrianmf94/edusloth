@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface Todo {
   id: string;
@@ -20,22 +20,22 @@ interface TodoProps {
 const Todo: React.FC<TodoProps> = ({
   initialTodos = [],
   onSave,
-  title = 'Tasks',
-  storageKey = 'edusloth-todos'
+  title = "Tasks",
+  storageKey = "edusloth-todos",
 }) => {
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
-  const [newTodo, setNewTodo] = useState('');
+  const [newTodo, setNewTodo] = useState("");
   const router = useRouter();
 
   // Load todos from localStorage on component mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const savedTodos = localStorage.getItem(storageKey);
       if (savedTodos) {
         try {
           setTodos(JSON.parse(savedTodos));
         } catch (error) {
-          console.error('Failed to parse todos from storage', error);
+          console.error("Failed to parse todos from storage", error);
         }
       }
     }
@@ -43,7 +43,7 @@ const Todo: React.FC<TodoProps> = ({
 
   // Save todos to localStorage when they change
   useEffect(() => {
-    if (typeof window !== 'undefined' && todos.length > 0) {
+    if (typeof window !== "undefined" && todos.length > 0) {
       localStorage.setItem(storageKey, JSON.stringify(todos));
       if (onSave) {
         onSave(todos);
@@ -58,34 +58,34 @@ const Todo: React.FC<TodoProps> = ({
         id: Date.now().toString(),
         text: newTodo.trim(),
         completed: false,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
       setTodos([...todos, newTask]);
-      setNewTodo('');
+      setNewTodo("");
     }
   };
 
   const toggleComplete = (id: string) => {
     setTodos(
-      todos.map(todo =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
+      todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
+      ),
     );
   };
 
   const deleteTodo = (id: string) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+    setTodos(todos.filter((todo) => todo.id !== id));
   };
 
   const clearCompleted = () => {
-    setTodos(todos.filter(todo => !todo.completed));
+    setTodos(todos.filter((todo) => !todo.completed));
   };
 
   return (
     <div className="w-full max-w-md">
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
         <h2 className="text-xl font-bold mb-4">{title}</h2>
-        
+
         <form onSubmit={handleAddTodo} className="mb-4">
           <div className="flex items-center border-b border-blue-500 py-2">
             <input
@@ -103,12 +103,12 @@ const Todo: React.FC<TodoProps> = ({
             </button>
           </div>
         </form>
-        
+
         <ul className="divide-y divide-gray-200">
           {todos.length === 0 ? (
             <li className="py-4 text-gray-500">No tasks yet. Add one above!</li>
           ) : (
-            todos.map(todo => (
+            todos.map((todo) => (
               <li key={todo.id} className="py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -118,9 +118,11 @@ const Todo: React.FC<TodoProps> = ({
                       checked={todo.completed}
                       onChange={() => toggleComplete(todo.id)}
                     />
-                    <span 
+                    <span
                       className={`ml-3 ${
-                        todo.completed ? 'line-through text-gray-400' : 'text-gray-900'
+                        todo.completed
+                          ? "line-through text-gray-400"
+                          : "text-gray-900"
                       }`}
                     >
                       {todo.text}
@@ -130,8 +132,19 @@ const Todo: React.FC<TodoProps> = ({
                     onClick={() => deleteTodo(todo.id)}
                     className="ml-2 text-red-500 hover:text-red-700"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -139,8 +152,8 @@ const Todo: React.FC<TodoProps> = ({
             ))
           )}
         </ul>
-        
-        {todos.some(todo => todo.completed) && (
+
+        {todos.some((todo) => todo.completed) && (
           <div className="mt-4 flex justify-end">
             <button
               onClick={clearCompleted}
@@ -155,4 +168,4 @@ const Todo: React.FC<TodoProps> = ({
   );
 };
 
-export default Todo; 
+export default Todo;

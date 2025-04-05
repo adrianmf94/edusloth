@@ -137,7 +137,7 @@ Instead of installing databases locally, you can use Docker:
          - "5432:5432"
        volumes:
          - postgres_data:/var/lib/postgresql/data
-     
+
      mongodb:
        image: mongo:6
        ports:
@@ -288,4 +288,4 @@ Once connected, you'll find these main collections in the `edusloth` database:
 
 ### Connection String Reference
 - Local development: `mongodb://localhost:27017`
-- Database name: `edusloth` 
+- Database name: `edusloth`

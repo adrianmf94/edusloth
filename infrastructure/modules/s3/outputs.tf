@@ -36,4 +36,4 @@ output "transcription_bucket_arn" {
 output "ai_generation_bucket_arn" {
   description = "ARN of S3 bucket for AI-generated content"
   value       = aws_s3_bucket.ai_generation.arn
-} 
+}
