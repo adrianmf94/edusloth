@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # Database
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_PASSWORD: str = "password"
     POSTGRES_DB: str = "edusloth"
     SQLALCHEMY_DATABASE_URI: Optional[str] = None
 
@@ -47,16 +47,16 @@ class Settings(BaseSettings):
     MONGODB_DB: str = "edusloth"
     
     # OpenAI
-    OPENAI_API_KEY: str = "your-openai-api-key"
+    OPENAI_API_KEY: str = ""
     
     # AWS
-    AWS_ACCESS_KEY_ID: str = "your-aws-access-key"
-    AWS_SECRET_ACCESS_KEY: str = "your-aws-secret-key"
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
     AWS_REGION: str = "eu-central-1"
-    S3_BUCKET: str = "edusloth-files"
-    S3_ACCESS_KEY: str = "minioadmin"
-    S3_SECRET_KEY: str = "minioadmin"
-    S3_ENDPOINT: str = "http://localhost:9000"
+    S3_DOCUMENT_BUCKET: str = "edusloth-dev-documents"
+    S3_AUDIO_BUCKET: str = "edusloth-dev-audio"
+    S3_TRANSCRIPTION_BUCKET: str = "edusloth-dev-transcription"
+    S3_AI_GENERATION_BUCKET: str = "edusloth-dev-ai-generation"
 
     class Config:
         case_sensitive = True
