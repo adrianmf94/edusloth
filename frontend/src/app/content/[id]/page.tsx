@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useContentStore } from "@/lib/store/contentStore";
 import { useTranscriptionStore } from "@/lib/store/transcriptionStore";
 import { useAIGenerationStore } from "@/lib/store/aiGenerationStore";
 import Link from "next/link";
+import axios from "axios";
 
 interface ContentDetailPageProps {
   params: {
@@ -15,7 +16,30 @@ interface ContentDetailPageProps {
   };
 }
 
+// Add type definitions for content
+interface Content {
+  id: string;
+  title: string;
+  content_type: string;
+  content_url: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  description?: string;
+}
+
+// Add type definitions for generated content
+interface GeneratedContent {
+  id: string;
+  content_id: string;
+  content_type: string;
+  content: any;
+  created_at: string;
+}
+
 const ContentDetailPage = ({ params }: ContentDetailPageProps) => {
+  // FIXME: Direct access to params.id will be deprecated in future Next.js versions
+  // We should use React.use(params).id, but it's causing TypeScript errors with the current setup
   const contentId = params.id;
   const router = useRouter();
   const { isAuthenticated, checkAuth } = useAuthStore();
@@ -46,7 +70,7 @@ const ContentDetailPage = ({ params }: ContentDetailPageProps) => {
     error: generationError,
   } = useAIGenerationStore();
 
-  const [content, setContent] = useState<any>(null);
+  const [content, setContent] = useState<Content | null>(null);
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [generationType, setGenerationType] = useState<string>("summary");
 
@@ -61,11 +85,13 @@ const ContentDetailPage = ({ params }: ContentDetailPageProps) => {
 
       // Fetch content details
       const contentDetails = await fetchContentDetails(contentId);
-      if (contentDetails) {
-        setContent(contentDetails);
+
+      // Check if contentDetails is not null before using it
+      if (contentDetails !== null && contentDetails !== undefined) {
+        setContent(contentDetails as Content);
 
         // Fetch transcription if it's audio content
-        if (contentDetails.content_type === "audio") {
+        if ((contentDetails as Content).content_type === "audio") {
           await fetchTranscription(contentId);
         }
 
@@ -108,6 +134,173 @@ const ContentDetailPage = ({ params }: ContentDetailPageProps) => {
     setGenerationType(type);
     await fetchSpecificGeneration(contentId, type);
     setActiveTab("ai");
+  };
+
+  // Utility functions
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const capitalizeFirstLetter = (string: string): string => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+
+  const renderGenerationContent = (generation: any) => {
+    switch (generation.type) {
+      case "summary":
+        return (
+          <div className="mt-4 p-4 bg-gray-50 rounded-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Summary</h3>
+            <p className="text-gray-700 whitespace-pre-line">
+              {generation.summary}
+            </p>
+          </div>
+        );
+
+      case "flashcards":
+        return (
+          <div className="mt-4 space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Flashcards</h3>
+            {generation.flashcards?.map((card: any, index: number) => (
+              <div
+                key={index}
+                className="bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden"
+              >
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-900">
+                    Question
+                  </h4>
+                  <p className="mt-1">{card.question}</p>
+                </div>
+                <div className="px-4 py-3">
+                  <h4 className="text-sm font-medium text-gray-900">Answer</h4>
+                  <p className="mt-1">{card.answer}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case "quiz":
+        return (
+          <div className="mt-4 space-y-6">
+            <h3 className="text-lg font-medium text-gray-900">Quiz</h3>
+            {generation.quiz?.map((question: any, index: number) => (
+              <div
+                key={index}
+                className="bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden"
+              >
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-900">
+                    Question {index + 1}
+                  </h4>
+                  <p className="mt-1">{question.question}</p>
+                </div>
+                <div className="px-4 py-3 space-y-3">
+                  <h4 className="text-sm font-medium text-gray-900">Options</h4>
+                  {question.options.map(
+                    (option: string, optionIndex: number) => (
+                      <div key={optionIndex} className="flex items-start">
+                        <div
+                          className={`flex-shrink-0 h-5 w-5 ${
+                            optionIndex === question.correct_option
+                              ? "text-green-500"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {optionIndex === question.correct_option ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        <p
+                          className={`ml-2 text-sm ${
+                            optionIndex === question.correct_option
+                              ? "text-green-700 font-medium"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {option}
+                        </p>
+                      </div>
+                    ),
+                  )}
+                  {question.explanation && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-900">
+                        Explanation
+                      </h4>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {question.explanation}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case "mindmap":
+        // For a mind map, we would ideally use a visualization library
+        // For now, we'll render a simplified text-based representation
+        return (
+          <div className="mt-4 p-4 bg-gray-50 rounded-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Mind Map</h3>
+            <p className="text-gray-500 mb-4">
+              Mind map visualization is not available in this view. Below is a
+              text representation of the mind map nodes:
+            </p>
+            {generation.mindmap &&
+              Object.values(generation.mindmap).map((node: any) => (
+                <div key={node.id} className="mb-3">
+                  <h4 className="font-medium">{node.name}</h4>
+                  {node.children && node.children.length > 0 && (
+                    <ul className="pl-5 mt-1">
+                      {node.children.map((child: any) => (
+                        <li key={child.id} className="text-sm text-gray-700">
+                          {child.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+          </div>
+        );
+
+      default:
+        return (
+          <div className="mt-4 p-4 bg-gray-50 rounded-md">
+            <p className="text-gray-500">
+              Content not available for this generation type.
+            </p>
+          </div>
+        );
+    }
   };
 
   if (!isAuthenticated) {
@@ -494,168 +687,6 @@ const ContentDetailPage = ({ params }: ContentDetailPageProps) => {
       </div>
     </MainLayout>
   );
-};
-
-// Utility functions
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
-
-const capitalizeFirstLetter = (string: string): string => {
-  return string.charAt(0).toUpperCase() + string.slice(1);
-};
-
-const renderGenerationContent = (generation: any) => {
-  switch (generation.type) {
-    case "summary":
-      return (
-        <div className="p-4 bg-gray-50 rounded-md">
-          <p className="text-gray-700 whitespace-pre-line">
-            {generation.summary}
-          </p>
-        </div>
-      );
-
-    case "flashcards":
-      return (
-        <div className="space-y-4">
-          {generation.flashcards?.map((card: any, index: number) => (
-            <div
-              key={index}
-              className="bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden"
-            >
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <h4 className="text-sm font-medium text-gray-900">Question</h4>
-                <p className="mt-1">{card.question}</p>
-              </div>
-              <div className="px-4 py-3">
-                <h4 className="text-sm font-medium text-gray-900">Answer</h4>
-                <p className="mt-1">{card.answer}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-
-    case "quiz":
-      return (
-        <div className="space-y-6">
-          {generation.quiz?.map((question: any, index: number) => (
-            <div
-              key={index}
-              className="bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden"
-            >
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <h4 className="text-sm font-medium text-gray-900">
-                  Question {index + 1}
-                </h4>
-                <p className="mt-1">{question.question}</p>
-              </div>
-              <div className="px-4 py-3 space-y-3">
-                <h4 className="text-sm font-medium text-gray-900">Options</h4>
-                {question.options.map((option: string, optionIndex: number) => (
-                  <div key={optionIndex} className="flex items-start">
-                    <div
-                      className={`flex-shrink-0 h-5 w-5 ${
-                        optionIndex === question.correct_option
-                          ? "text-green-500"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      {optionIndex === question.correct_option ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                    <p
-                      className={`ml-2 text-sm ${
-                        optionIndex === question.correct_option
-                          ? "text-green-700 font-medium"
-                          : "text-gray-700"
-                      }`}
-                    >
-                      {option}
-                    </p>
-                  </div>
-                ))}
-                {question.explanation && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <h4 className="text-sm font-medium text-gray-900">
-                      Explanation
-                    </h4>
-                    <p className="mt-1 text-sm text-gray-600">
-                      {question.explanation}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-
-    case "mindmap":
-      // For a mind map, we would ideally use a visualization library
-      // For now, we'll render a simplified text-based representation
-      return (
-        <div className="p-4 bg-gray-50 rounded-md">
-          <p className="text-gray-500 mb-4">
-            Mind map visualization is not available in this view. Below is a
-            text representation of the mind map nodes:
-          </p>
-          {generation.mindmap &&
-            Object.values(generation.mindmap).map((node: any) => (
-              <div key={node.id} className="mb-3">
-                <h4 className="font-medium">{node.label}</h4>
-                {node.children.length > 0 && (
-                  <ul className="pl-5 mt-1">
-                    {node.children.map((childId: string) => {
-                      const childNode = generation.mindmap[childId];
-                      return childNode ? (
-                        <li key={childId} className="text-sm text-gray-700">
-                          {childNode.label}
-                        </li>
-                      ) : null;
-                    })}
-                  </ul>
-                )}
-              </div>
-            ))}
-        </div>
-      );
-
-    default:
-      return (
-        <div className="p-4 bg-gray-50 rounded-md">
-          <p className="text-gray-500">
-            Content not available for this generation type.
-          </p>
-        </div>
-      );
-  }
 };
 
 export default ContentDetailPage;
