@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 import json
 
-from openai import OpenAI
 import PyPDF2
 import boto3
 from google import genai
@@ -18,10 +17,6 @@ from app.db.session import (
     transcriptions_collection,
 )
 from app.services import content_service
-
-# Configure OpenAI API
-openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
-
 
 # Create the Gemini client
 gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
@@ -317,7 +312,7 @@ async def generate_summary(text: str, content_type: str) -> str:
     and uses native PDF processing for PDF documents.
     """
     # Define the model name once to use consistently
-    model_name = "gemini-1.5-pro"
+    model_name = "gemini-2.0-flash"
 
     # Check if we're processing a PDF file
     is_pdf = content_type == "pdf" or (
@@ -384,7 +379,7 @@ async def generate_summary(text: str, content_type: str) -> str:
                 return str(response.text)
             except Exception as pdf_err:
                 print(f"Error processing PDF with Gemini: {str(pdf_err)}")
-                raise
+                return f"Error processing PDF: {str(pdf_err)}"
         else:
             # Process regular text content
             # Estimate token count (rough approximation: ~4 chars per token)
@@ -429,7 +424,7 @@ async def generate_summary(text: str, content_type: str) -> str:
                         return str(response.text)
                     except Exception as simple_err:
                         print(f"Error with simple approach: {str(simple_err)}")
-                        raise
+                        return f"Error generating summary: {str(simple_err)}"
             else:
                 # For extremely large documents, we'll fall back to a chunking approach
                 print(
@@ -494,104 +489,7 @@ async def generate_summary(text: str, content_type: str) -> str:
 
     except Exception as e:
         print(f"Error using Gemini API: {e}")
-        # Fallback to OpenAI if Gemini fails
-        print("Falling back to OpenAI API...")
-
-        # For PDFs in the fallback case, attempt to extract text first
-        if is_pdf:
-            try:
-                print("Attempting text extraction from PDF for OpenAI fallback")
-                with open(text, "rb") as file:
-                    reader = PyPDF2.PdfReader(file)
-                    extracted_text = ""
-                    for page in reader.pages:
-                        extracted_text += page.extract_text() + "\n\n"
-
-                if not extracted_text.strip():
-                    return "Could not extract text from PDF for fallback summarization."
-
-                # Use the extracted text for OpenAI
-                text = extracted_text
-            except Exception as pdf_err:
-                print(f"Error extracting text from PDF for fallback: {str(pdf_err)}")
-                return f"Error processing document: {str(pdf_err)}"
-
-        # Check if text is too large for OpenAI (>7000 tokens estimated)
-        if len(text) > 28000:  # Rough estimate: 4 chars per token
-            print(
-                f"Text is too large for OpenAI fallback ({len(text)} chars), chunking..."
-            )
-            # Split into chunks of approximately 7000 tokens
-            max_chunk_size = 28000
-            chunks = [
-                text[i : i + max_chunk_size]
-                for i in range(0, len(text), max_chunk_size)
-            ]
-
-            # Generate summary for each chunk
-            chunk_summaries = []
-            for i, chunk in enumerate(chunks):
-                try:
-                    chunk_prompt = f"This is part {i+1} of {len(chunks)} of a document. Summarize this section concisely:"
-                    response = openai_client.chat.completions.create(
-                        model="gpt-4",
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": "You are a helpful educational assistant.",
-                            },
-                            {"role": "user", "content": f"{chunk_prompt}\n\n{chunk}"},
-                        ],
-                        max_tokens=500,
-                        temperature=0.5,
-                    )
-                    chunk_summaries.append(response.choices[0].message.content)
-                except Exception as e:
-                    print(f"Error summarizing chunk {i+1}: {e}")
-                    chunk_summaries.append(f"[Error summarizing part {i+1}]")
-
-            # Combine the summaries
-            combined_text = "\n\n".join(chunk_summaries)
-
-            # Generate final summary from the combined chunk summaries
-            try:
-                response = openai_client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a helpful educational assistant.",
-                        },
-                        {
-                            "role": "user",
-                            "content": f"Below are summaries of different parts of a document. Create a coherent overall summary that captures the main points from all sections:\n\n{combined_text}",
-                        },
-                    ],
-                    max_tokens=1000,
-                    temperature=0.5,
-                )
-                return str(response.choices[0].message.content)
-            except Exception as e:
-                print(f"Error creating final summary in OpenAI fallback: {e}")
-                return combined_text
-        else:
-            # Original OpenAI logic for smaller texts
-            response = openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a helpful educational assistant.",
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Summarize the following document in a clear, concise way that captures the main points:\n\n{text}",
-                    },
-                ],
-                max_tokens=1000,
-                temperature=0.5,
-            )
-            return str(response.choices[0].message.content)
+        return f"Error generating summary: {str(e)}"
 
 
 async def generate_flashcards(text: str, content_type: str) -> List[Dict[str, str]]:
@@ -599,7 +497,7 @@ async def generate_flashcards(text: str, content_type: str) -> List[Dict[str, st
     Generate flashcards from text or PDF document using Gemini API.
     """
     # Define the model name once to use consistently
-    model_name = "gemini-1.5-pro"
+    model_name = "gemini-2.0-flash"
 
     # Check if we're processing a PDF file
     is_pdf = content_type == "pdf" or (
@@ -850,24 +748,18 @@ async def generate_flashcards(text: str, content_type: str) -> List[Dict[str, st
 
         for i, chunk in enumerate(chunks):
             try:
-                response = openai_client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a helpful educational assistant.",
-                        },
-                        {
-                            "role": "user",
-                            "content": f"This is part {i+1} of {len(chunks)} of a document. Create {cards_per_chunk} flashcards with question and answer pairs that cover the most important concepts. Format as a JSON array of objects with 'question' and 'answer' fields.\n\n{chunk}",
-                        },
+                response = gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=[
+                        genai_types.Part.from_text(
+                            f"This is part {i+1} of {len(chunks)} of a document. Create {cards_per_chunk} flashcards with question and answer pairs that cover the most important concepts. Format as a JSON array of objects with 'question' and 'answer' fields.\n\n{chunk}"
+                        ),
                     ],
-                    max_tokens=1000,
-                    temperature=0.5,
+                    config={"temperature": 0.5, "max_output_tokens": 1000},
                 )
 
                 # Extract JSON from response
-                content = response.choices[0].message.content
+                content = response.text
                 start = content.find("[")
                 end = content.rfind("]") + 1
 
@@ -886,26 +778,20 @@ async def generate_flashcards(text: str, content_type: str) -> List[Dict[str, st
         return all_flashcards[:10]  # Return at most 10 cards
     else:
         # Original logic for smaller texts
-        response = openai_client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful educational assistant.",
-                },
-                {
-                    "role": "user",
-                    "content": f"Based on the following document, create 10 flashcards with question and answer pairs that cover the most important concepts. Format as a JSON array of objects with 'question' and 'answer' fields.\n\n{text}",
-                },
+        response = gemini_client.models.generate_content(
+            model=model_name,
+            contents=[
+                genai_types.Part.from_text(
+                    f"Based on the following document, create 10 flashcards with question and answer pairs that cover the most important concepts. Format as a JSON array of objects with 'question' and 'answer' fields.\n\n{text}"
+                ),
             ],
-            max_tokens=1500,
-            temperature=0.5,
+            config={"temperature": 0.5, "max_output_tokens": 1500},
         )
 
         # Parse JSON from response
         try:
             # Extract just the JSON part from the response
-            content = response.choices[0].message.content
+            content = response.text
             # Find JSON array start and end
             start = content.find("[")
             end = content.rfind("]") + 1
@@ -934,7 +820,7 @@ async def generate_quiz(text: str, content_type: str) -> List[Dict[str, Any]]:
     Generate a quiz from text or PDF document using Gemini API.
     """
     # Define the model name once to use consistently
-    model_name = "gemini-1.5-pro"
+    model_name = "gemini-2.0-flash"
 
     # Check if we're processing a PDF file
     is_pdf = content_type == "pdf" or (
@@ -1195,24 +1081,18 @@ async def generate_quiz(text: str, content_type: str) -> List[Dict[str, Any]]:
 
         for i, chunk in enumerate(chunks):
             try:
-                response = openai_client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a helpful educational assistant.",
-                        },
-                        {
-                            "role": "user",
-                            "content": f"This is part {i+1} of {len(chunks)} of a document. Create {questions_per_chunk} multiple-choice quiz questions with 4 options each. Format as a JSON array of objects with 'question', 'options' (array of 4 strings), 'correct_option' (integer 0-3), and 'explanation' fields.\n\n{chunk}",
-                        },
+                response = gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=[
+                        genai_types.Part.from_text(
+                            f"This is part {i+1} of {len(chunks)} of a document. Create {questions_per_chunk} multiple-choice quiz questions with 4 options each. Format as a JSON array of objects with 'question', 'options' (array of 4 strings), 'correct_option' (integer 0-3), and 'explanation' fields.\n\n{chunk}"
+                        ),
                     ],
-                    max_tokens=1000,
-                    temperature=0.5,
+                    config={"temperature": 0.5, "max_output_tokens": 1000},
                 )
 
                 # Extract JSON from response
-                content = response.choices[0].message.content
+                content = response.text
                 start = content.find("[")
                 end = content.rfind("]") + 1
 
@@ -1239,26 +1119,20 @@ async def generate_quiz(text: str, content_type: str) -> List[Dict[str, Any]]:
         return all_questions[:5]  # Return at most 5 questions
     else:
         # Original logic for smaller texts
-        response = openai_client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful educational assistant.",
-                },
-                {
-                    "role": "user",
-                    "content": f"Based on the following document, create 5 multiple-choice quiz questions with 4 options each. Format as a JSON array of objects with 'question', 'options' (array of 4 strings), 'correct_option' (integer 0-3), and 'explanation' fields.\n\n{text}",
-                },
+        response = gemini_client.models.generate_content(
+            model=model_name,
+            contents=[
+                genai_types.Part.from_text(
+                    f"Based on the following document, create 5 multiple-choice quiz questions with 4 options each. Format as a JSON array of objects with 'question', 'options' (array of 4 strings), 'correct_option' (integer 0-3), and 'explanation' fields.\n\n{text}"
+                ),
             ],
-            max_tokens=1500,
-            temperature=0.5,
+            config={"temperature": 0.5, "max_output_tokens": 1500},
         )
 
         # Parse JSON from response
         try:
             # Extract just the JSON part from the response
-            content = response.choices[0].message.content
+            content = response.text
             # Find JSON array start and end
             start = content.find("[")
             end = content.rfind("]") + 1
@@ -1297,7 +1171,7 @@ async def generate_mindmap(text: str, content_type: str) -> Dict[str, Any]:
     Generate a mindmap structure from text or PDF document using Gemini API.
     """
     # Define the model name once to use consistently
-    model_name = "gemini-1.5-pro"
+    model_name = "gemini-2.0-flash"
 
     # Check if we're processing a PDF file
     is_pdf = content_type == "pdf" or (
@@ -1508,22 +1382,16 @@ async def generate_mindmap(text: str, content_type: str) -> Dict[str, Any]:
     else:
         # Original logic for smaller texts
         try:
-            response = openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a helpful educational assistant.",
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Based on the following document, create a hierarchical mind map showing the main concepts and their relationships. Format as a JSON object where each node has a 'name' and 'children' array of other nodes. The root node should have name 'root'.\n\n{text}",
-                    },
+            response = gemini_client.models.generate_content(
+                model=model_name,
+                contents=[
+                    genai_types.Part.from_text(
+                        f"Based on the following document, create a hierarchical mind map showing the main concepts and their relationships. Format as a JSON object where each node has a 'name' and 'children' array of other nodes. The root node should have name 'root'.\n\n{text}"
+                    ),
                 ],
-                max_tokens=1500,
-                temperature=0.5,
+                config={"temperature": 0.5, "max_output_tokens": 1500},
             )
-            content = response.choices[0].message.content
+            content = response.text
 
             # Extract JSON part
             start = content.find("{")
