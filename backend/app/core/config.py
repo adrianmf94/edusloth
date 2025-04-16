@@ -1,69 +1,47 @@
-import secrets
-from typing import Any, Dict, List, Optional, Union
+from typing import Optional
 
-from pydantic import AnyHttpUrl, validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    PROJECT_NAME: str = "EduSloth Backend"
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = secrets.token_urlsafe(32)
-    # 60 minutes * 24 hours * 8 days = 8 days
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
-    SERVER_NAME: str = "localhost"
-    SERVER_HOST: AnyHttpUrl = "http://localhost:8000"
-    # BACKEND_CORS_ORIGINS is a JSON-formatted list of origins
-    # e.g: '["http://localhost", "http://localhost:4200", "http://localhost:3000"]'
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",  # React frontend
-        "http://localhost:8000",  # FastAPI backend
-    ]
 
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
-
-    PROJECT_NAME: str = "EduSloth"
-
-    # Database
-    POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "password"
-    POSTGRES_DB: str = "edusloth"
-    SQLALCHEMY_DATABASE_URI: Optional[str] = None
-
-    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
-    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
-        if isinstance(v, str):
-            return v
-        return f"postgresql://{values.get('POSTGRES_USER')}:{values.get('POSTGRES_PASSWORD')}@{values.get('POSTGRES_SERVER')}/{values.get('POSTGRES_DB')}"
+    # Environment specific settings (e.g., loaded from .env)
+    ENVIRONMENT: str = "development"
 
     # MongoDB
-    MONGODB_URL: str = "mongodb://localhost:27017"
-    MONGODB_DB: str = "edusloth"
+    MONGODB_URL: str
+    MONGODB_DB: str
 
-    # OpenAI
-    OPENAI_API_KEY: str = ""
+    # OpenAI API Key (Required for Whisper? Check usage)
+    OPENAI_API_KEY: Optional[str] = None
 
     # Google AI
-    GOOGLE_API_KEY: str = ""
+    GOOGLE_API_KEY: Optional[str] = None
 
-    # AWS
-    AWS_ACCESS_KEY_ID: str = ""
-    AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_REGION: str = "eu-central-1"
-    S3_DOCUMENT_BUCKET: str = "edusloth-dev-documents"
-    S3_AUDIO_BUCKET: str = "edusloth-dev-audio"
+    # JWT
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+
+    # CORS
+    BACKEND_CORS_ORIGINS: str = "*"  # Adjust as needed for production
+
+    # AWS S3
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+    AWS_REGION: str = "us-east-1"
+    S3_UPLOAD_BUCKET: str = "edusloth-dev-upload"
     S3_TRANSCRIPTION_BUCKET: str = "edusloth-dev-transcription"
     S3_AI_GENERATION_BUCKET: str = "edusloth-dev-ai-generation"
+
+    # Removed PostgreSQL validator
 
     class Config:
         case_sensitive = True
         env_file = ".env"
+        env_file_encoding = "utf-8"
 
 
 settings = Settings()

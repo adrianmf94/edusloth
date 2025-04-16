@@ -1,15 +1,5 @@
 version: '3'
 services:
-  postgres:
-    image: postgres:13
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=edusloth
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
 
   mongodb:
     image: mongo:6
@@ -19,5 +9,4 @@ services:
       - mongodb_data:/data/db
 
 volumes:
-  postgres_data:
   mongodb_data:

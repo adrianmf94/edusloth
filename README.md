@@ -17,20 +17,20 @@ EduSloth is an AI-powered study companion that helps students organize study mat
 
 - **Frontend**: Next.js, React, Tailwind CSS, Zustand
 - **Backend**: FastAPI, Python
-- **Databases**: PostgreSQL, MongoDB
+- **Databases**: MongoDB
 - **Storage**: AWS S3 (for file storage)
-- **AI Services**: OpenAI API
+- **AI Services**: Google Generative AI API
 
 ## Local Development Setup
 
-### Requirements
+### Prerequisites
 
-- Node.js (v18+)
-- Python (v3.9+)
-- PostgreSQL
+- Python 3.9+
+- Node.js 18+
 - MongoDB
-- AWS Account (for S3 storage)
-- OpenAI API Key (for AI features)
+- Docker (optional, for database services)
+- AWS Account & Credentials (for S3)
+- Google Generative AI API Key
 
 ### Backend Setup
 
@@ -82,132 +82,58 @@ EduSloth is an AI-powered study companion that helps students organize study mat
 
 ### Database Setup
 
-#### PostgreSQL
-
-Using Homebrew (macOS):
-
-1. Install PostgreSQL:
-   ```bash
-   brew install postgresql@15
-   ```
-
-2. Start PostgreSQL service:
-   ```bash
-   brew services start postgresql@15
-   ```
-
-3. Create database and user:
-   ```bash
-   psql postgres -c "CREATE DATABASE edusloth;"
-   psql postgres -c "CREATE USER postgres WITH PASSWORD 'password';"
-   psql postgres -c "GRANT ALL PRIVILEGES ON DATABASE edusloth TO postgres;"
-   ```
-
 #### MongoDB
 
-Using Homebrew (macOS):
+1. **Install MongoDB**: Follow the official MongoDB installation guide for your OS.
+   Alternatively, use Docker (see `docker-compose.yml`).
 
-1. Install MongoDB:
+2. **Run MongoDB**: Ensure the MongoDB service is running. If using Docker:
    ```bash
-   brew install mongodb-community
+   docker-compose up -d mongodb
    ```
 
-2. Start MongoDB service:
-   ```bash
-   brew services start mongodb-community
-   ```
+#### PostgreSQL
 
-The application will automatically create the MongoDB database when it first connects.
+### Docker
 
-### Docker Alternative
+A `docker-compose.yml` file is provided for running database services easily:
 
-Instead of installing databases locally, you can use Docker:
+```yaml
+version: '3'
+services:
+  mongodb:
+    image: mongo:7 # Use a specific version if needed
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
 
-1. Create a `docker-compose.yml` file in the project root:
-   ```yaml
-   version: '3.8'
-   services:
-     postgres:
-       image: postgres:15
-       environment:
-         - POSTGRES_USER=postgres
-         - POSTGRES_PASSWORD=password
-         - POSTGRES_DB=edusloth
-       ports:
-         - "5432:5432"
-       volumes:
-         - postgres_data:/var/lib/postgresql/data
-
-     mongodb:
-       image: mongo:6
-       ports:
-         - "27017:27017"
-       volumes:
-         - mongodb_data:/data/db
-
-   volumes:
-     postgres_data:
-     mongodb_data:
-   ```
-
-2. Start the containers:
-   ```bash
-   docker-compose up -d
-   ```
-
-### Additional Requirements
-
-#### FFmpeg
-The audio processing features require FFmpeg:
-
-On macOS:
-```bash
-brew install ffmpeg
+volumes:
+  mongodb_data:
 ```
 
-On Ubuntu/Debian:
-```bash
-sudo apt update
-sudo apt install ffmpeg
-```
+## Environment Variables
 
-On Windows, download from the [official website](https://ffmpeg.org/download.html) and add to PATH.
-
-## Environment Configuration
-
-### Backend (.env)
-
-Essential environment variables:
-```
-# API Configuration
-API_V1_STR=/api/v1
-PROJECT_NAME=EduSloth
-SERVER_NAME=localhost
-SERVER_HOST=http://localhost:8000
-BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
-
-# Security
-SECRET_KEY=your-secure-random-string
+Create a `.env` file in the `backend` directory by copying `.env.example`. Key variables include:
 
 # PostgreSQL
-POSTGRES_SERVER=localhost
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
-POSTGRES_DB=edusloth
+# POSTGRES_SERVER=localhost
+# POSTGRES_USER=postgres
+# POSTGRES_PASSWORD=password
+# POSTGRES_DB=edusloth
 
 # MongoDB
-MONGODB_URL=mongodb://localhost:27017/
+MONGODB_URL=mongodb://localhost:27017
 MONGODB_DB=edusloth
 
-# OpenAI
-OPENAI_API_KEY=your-openai-api-key
+# Google AI
+GOOGLE_API_KEY=your-google-api-key
 
 # AWS
 AWS_ACCESS_KEY_ID=your-aws-access-key
 AWS_SECRET_ACCESS_KEY=your-aws-secret-key
 AWS_REGION=eu-central-1
 S3_BUCKET=edusloth-files
-```
 
 ## Usage
 
@@ -224,10 +150,10 @@ After setting up both frontend and backend:
 
 ## Troubleshooting
 
-- **Database connection issues**: Ensure PostgreSQL and MongoDB are running and credentials are correct
-- **Audio processing errors**: Verify FFmpeg is properly installed
-- **File upload issues**: Check AWS credentials and S3 bucket permissions
-- **AI feature errors**: Verify OpenAI API key is valid and has sufficient credits
+- **Database connection issues**: Ensure MongoDB is running and credentials in `backend/.env` are correct. Check firewall settings.
+- **Dependency errors**: Run `pip install -r backend/requirements.txt` and `npm install` in `frontend/`.
+- **AI feature errors**: Verify Google API key is valid and has sufficient credits. Check network connectivity to AI services.
+- **CORS errors**: Ensure `BACKEND_CORS_ORIGINS` in `backend/.env` includes your frontend URL (`http://localhost:3000` by default).
 
 ## Connecting to MongoDB (GUI Tools)
 
