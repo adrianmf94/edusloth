@@ -1,0 +1,37 @@
+Project Title: EduSloth - AI Study Companion
+
+1. Introduction & Goal:
+EduSloth is an AI-powered web application designed to be a comprehensive study companion. The primary goal is to help students of all levels effectively manage, understand, and engage with their study materials through intelligent features.
+
+2. Target Audience:
+Students of all kinds (high school, university, professional development, etc.) who need assistance organizing and learning from various study materials.
+
+3. Core Features:
+    - User Accounts & Authentication.
+    - Material Upload: Allow users to upload study materials in various formats (PDF, images, Word documents, plain text notes).
+    - File Storage: Securely store uploaded files using AWS S3.
+    - AI-Powered Summarization: Generate concise summaries of uploaded documents using Google's Gemini Flash 2.0 model.
+    - Logical Organization: Automatically categorize and organize uploaded materials based on content or user input.
+    - Quiz Generation: Create interactive quizzes based on the content of uploaded documents, including integrated feedback mechanisms, powered by Gemini Flash 2.0.
+    - Flashcard Creation: Generate digital flashcards from key concepts within the study materials using Gemini Flash 2.0.
+    - Document Q&A: Implement a feature allowing users to ask specific questions about their uploaded documents and receive AI-generated answers based on the content (using Gemini Flash 2.0).
+    - User Interface: Develop an intuitive and user-friendly web interface for all features.
+
+4. Technical Stack:
+    - Frontend: Web Application (Specific framework TBD or based on existing code)
+    - Backend: (Python/framework TBD or based on existing code)
+    - MongoDB
+    - Cloud Storage: AWS S3
+    - AI Model: Google Gemini Flash 2.0 (via API)
+    - AI Tools: Potentially include Amazon Bedrock and other AI Services for OCR
+
+5. Initial Tasks/Milestones:
+    - Analyze the current state of the project codebase and infrastructure.
+    - Improve user registration (currently allowing only full name, ).
+    - Develop file upload functionality integrating with S3.
+    - Integrate Gemini Flash 2.0 API for summarization.
+    - Implement document organization logic.
+    - Improve quiz generation feature with feedback.
+    - Improve flashcard creation feature.
+    - Implement the document Q&A feature.
+    - Design and build an initial proposal of user interface.
