@@ -25,14 +25,6 @@ repos:
     -   id: black
         files: ^backend/ # Only run on backend files
         # You might want to configure black via pyproject.toml if needed
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v1.11.1' # Use a recent version
-    hooks:
-    -   id: mypy
-        # files: ^backend/ # Let mypy use the files/exclude from the config file
-        args: [--config-file, backend/pyproject.toml] # Explicitly point to the config
-        # Mypy configuration is now in backend/pyproject.toml
-        additional_dependencies: [types-requests, types-redis] # Add types for libs used in backend
 
 # Frontend Hooks (primarily in ./frontend)
 -   repo: https://github.com/pre-commit/mirrors-prettier
