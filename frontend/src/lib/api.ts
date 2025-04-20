@@ -79,9 +79,13 @@ export const uploadContent = async (data: FormData) => {
 };
 
 export const getUserContent = async (params?: {
+  search?: string;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
   skip?: number;
   limit?: number;
 }) => {
+  console.log("API Call - getUserContent with params:", params);
   const response = await api.get("/content", { params });
   return response.data;
 };

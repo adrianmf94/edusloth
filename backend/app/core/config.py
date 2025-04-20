@@ -9,6 +9,8 @@ class Settings(BaseSettings):
 
     # Environment specific settings (e.g., loaded from .env)
     ENVIRONMENT: str = "development"
+    SERVER_NAME: Optional[str] = None
+    SERVER_HOST: Optional[str] = None
 
     # MongoDB
     MONGODB_URL: str
@@ -19,6 +21,9 @@ class Settings(BaseSettings):
 
     # Google AI
     GOOGLE_API_KEY: Optional[str] = None
+
+    # Anthropic AI (Optional)
+    ANTHROPIC_API_KEY: Optional[str] = None
 
     # JWT
     SECRET_KEY: str
@@ -35,6 +40,8 @@ class Settings(BaseSettings):
     S3_UPLOAD_BUCKET: str = "edusloth-dev-upload"
     S3_TRANSCRIPTION_BUCKET: str = "edusloth-dev-transcription"
     S3_AI_GENERATION_BUCKET: str = "edusloth-dev-ai-generation"
+    S3_DOCUMENT_BUCKET: Optional[str] = None
+    S3_AUDIO_BUCKET: Optional[str] = None
 
     # Removed PostgreSQL validator
 

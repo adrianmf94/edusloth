@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form, Query
 from fastapi.responses import JSONResponse
 from typing import Optional, List, cast
 from datetime import datetime
 from pymongo import MongoClient
+import pymongo
 from app.core.config import settings
 from app.api import deps
 from app.models.user import User
@@ -90,11 +91,51 @@ async def upload_content(
 @router.get("/")
 async def get_user_content(
     current_user: User = Depends(deps.get_current_user),
+    search: Optional[str] = Query(
+        None, description="Search term for title or description"
+    ),
+    sort_by: Optional[str] = Query("created_at", description="Field to sort by"),
+    sort_order: Optional[str] = Query("desc", description="Sort order (asc or desc)"),
 ) -> List[dict]:
     """
-    Get all content for the current user
+    Get all content for the current user, with optional search and sort.
     """
-    user_content = list(content_collection.find({"user_id": str(current_user.id)}))
+    print(
+        f"API - get_user_content - Received params: search='{search}', sort_by='{sort_by}', sort_order='{sort_order}'"
+    )
+
+    # Base filter
+    filter_query = {"user_id": str(current_user.id)}
+
+    # Add search filter if provided
+    if search:
+        # Using MongoDB $text search.
+        # REQUIRES a text index on the collection:
+        # db.content.createIndex({ title: "text", description: "text" })
+        filter_query["$text"] = {"$search": search}
+        # Remove the previous $or regex filter
+        # filter_query["$or"] = [
+        #     {"title": {"$regex": search, "$options": "i"}},
+        #     {"description": {"$regex": search, "$options": "i"}},
+        # ]
+
+    # Determine sort direction
+    sort_direction = pymongo.DESCENDING if sort_order == "desc" else pymongo.ASCENDING
+
+    # Default sort field if not provided or invalid
+    valid_sort_fields = ["created_at", "updated_at", "title", "file_type", "size"]
+    if sort_by not in valid_sort_fields:
+        sort_by = "created_at"
+
+    # Build sort criteria
+    sort_criteria = [(sort_by, sort_direction)]
+
+    print(
+        f"API - get_user_content - Executing query: filter={filter_query}, sort={sort_criteria}"
+    )
+
+    # Execute query with filter and sort
+    user_content = list(content_collection.find(filter_query).sort(sort_criteria))
 
     # Convert MongoDB ObjectIDs to strings for JSON serialization
     for item in user_content:

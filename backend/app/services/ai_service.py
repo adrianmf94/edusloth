@@ -4,11 +4,13 @@ import tempfile
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import json
+import logging
 
 import PyPDF2
 import boto3
 from google import genai
 from google.genai import types as genai_types
+from google.api_core import exceptions as google_exceptions
 
 from app.core.config import settings
 from app.db.session import (
@@ -28,6 +30,8 @@ s3_client = boto3.client(
     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
     region_name=settings.AWS_REGION,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def get_generated_content(content_id: str) -> List[dict]:
@@ -49,11 +53,30 @@ def get_specific_generated_content(
     return dict(result) if result else None
 
 
-async def start_generation(content_id: str, user_id: str, generation_type: str) -> None:
+async def start_generation(
+    content_id: str, user_id: str, generation_type: str, **kwargs
+) -> None:
     """
     Generate AI content based on a transcription or document.
     This is meant to be run as a background task.
+    Accepts optional keyword arguments (e.g., question for 'qa').
     """
+    # --- Caching Check Start ---
+    try:
+        existing_generation = generated_content_collection.find_one(
+            {"content_id": content_id, "type": generation_type, "status": "completed"}
+        )
+        if existing_generation:
+            logger.info(
+                f"Found existing completed generation ({generation_type}) for content {content_id}. Skipping generation."
+            )
+            # Optionally update timestamp or return existing data if needed by calling context
+            # For a background task, simply returning might be sufficient.
+            return
+    except Exception as cache_err:
+        logger.warning(f"Error checking for existing generation cache: {cache_err}")
+    # --- Caching Check End ---
+
     # Get content
     content = content_service.get(id=content_id, user_id=user_id)
     if not content:
@@ -258,6 +281,22 @@ async def start_generation(content_id: str, user_id: str, generation_type: str) 
                 content_text, content["content_type"]
             )
             update_data = {"mindmap": result_mindmap}
+        elif generation_type == "organization":
+            result_org: Dict[str, Any] = await generate_organization_tags(
+                content_text, content["content_type"]
+            )
+            update_data = {"organization_tags": result_org}
+        elif generation_type == "qa":
+            question = kwargs.get("question")
+            if not question:
+                raise ValueError("Question is required for 'qa' generation type")
+            result_answer: str = await generate_answer_from_context(
+                content_text, content["content_type"], question
+            )
+            # Store the question along with the answer
+            update_data = {
+                "qa_pairs": [{"question": question, "answer": result_answer}]
+            }
         else:
             raise ValueError(f"Invalid generation type: {generation_type}")
 
@@ -695,124 +734,26 @@ async def generate_flashcards(text: str, content_type: str) -> List[Dict[str, st
                     ]
             except Exception as gen_err:
                 print(f"Error with Gemini generation for flashcards: {str(gen_err)}")
-                # Fall through to OpenAI fallback
-    except Exception as e:
-        print(f"Error using Gemini API for flashcards: {e}")
-
-    # Fallback to OpenAI if Gemini fails
-    print("Falling back to OpenAI API for flashcards...")
-
-    # For PDFs in the fallback case, attempt to extract text first
-    if is_pdf:
-        try:
-            print("Attempting text extraction from PDF for OpenAI flashcard fallback")
-            with open(text, "rb") as file:
-                reader = PyPDF2.PdfReader(file)
-                extracted_text = ""
-                for page in reader.pages:
-                    extracted_text += page.extract_text() + "\n\n"
-
-            if not extracted_text.strip():
+                # Fallback removed - return error directly
                 return [
                     {
-                        "question": "Error",
-                        "answer": "Could not extract text from PDF for flashcard generation.",
+                        "question": "Generation Error",
+                        "answer": f"Failed to generate flashcards using Gemini: {str(gen_err)}",
                     }
                 ]
-
-            # Use the extracted text for OpenAI
-            text = extracted_text
-        except Exception as pdf_err:
-            print(
-                f"Error extracting text from PDF for flashcard fallback: {str(pdf_err)}"
-            )
-            return [
-                {
-                    "question": "Error",
-                    "answer": f"Error processing document: {str(pdf_err)}",
-                }
-            ]
-
-    # Check if text is too large (>7000 tokens estimated)
-    if len(text) > 28000:  # Rough estimate: 4 chars per token
-        print(f"Text is too large ({len(text)} chars), chunking for flashcards...")
-        # Split into chunks of approximately 7000 tokens
-        max_chunk_size = 28000
-        chunks = [
-            text[i : i + max_chunk_size] for i in range(0, len(text), max_chunk_size)
+    except Exception as e:
+        print(f"Error using Gemini API for flashcards: {e}")
+        # Fallback removed - return error directly
+        return [
+            {
+                "question": "API Error",
+                "answer": f"Error communicating with AI service: {str(e)}",
+            }
         ]
 
-        # Generate flashcards for each chunk (fewer cards per chunk)
-        all_flashcards = []
-        cards_per_chunk = max(2, int(10 / len(chunks)))
-
-        for i, chunk in enumerate(chunks):
-            try:
-                response = gemini_client.models.generate_content(
-                    model=model_name,
-                    contents=[
-                        genai_types.Part.from_text(
-                            f"This is part {i+1} of {len(chunks)} of a document. Create {cards_per_chunk} flashcards with question and answer pairs that cover the most important concepts. Format as a JSON array of objects with 'question' and 'answer' fields.\n\n{chunk}"
-                        ),
-                    ],
-                    config={"temperature": 0.5, "max_output_tokens": 1000},
-                )
-
-                # Extract JSON from response
-                content = response.text
-                start = content.find("[")
-                end = content.rfind("]") + 1
-
-                if start >= 0 and end > start:
-                    json_str = content[start:end]
-                    chunk_cards: List[Dict[str, str]] = json.loads(json_str)
-                    all_flashcards.extend(chunk_cards)
-            except Exception as e:
-                print(f"Error generating flashcards for chunk {i+1}: {e}")
-                fallback_card: Dict[str, str] = {
-                    "question": f"[Error processing part {i+1}]",
-                    "answer": "Please try again or split the document.",
-                }
-                all_flashcards.append(fallback_card)
-
-        return all_flashcards[:10]  # Return at most 10 cards
-    else:
-        # Original logic for smaller texts
-        response = gemini_client.models.generate_content(
-            model=model_name,
-            contents=[
-                genai_types.Part.from_text(
-                    f"Based on the following document, create 10 flashcards with question and answer pairs that cover the most important concepts. Format as a JSON array of objects with 'question' and 'answer' fields.\n\n{text}"
-                ),
-            ],
-            config={"temperature": 0.5, "max_output_tokens": 1500},
-        )
-
-        # Parse JSON from response
-        try:
-            # Extract just the JSON part from the response
-            content = response.text
-            # Find JSON array start and end
-            start = content.find("[")
-            end = content.rfind("]") + 1
-
-            if start >= 0 and end > start:
-                json_str = content[start:end]
-                result: List[Dict[str, str]] = json.loads(json_str)
-                return result
-            else:
-                # Rename fallback variable (no-redef fix)
-                fallback_cards_else: List[Dict[str, str]] = [
-                    {"question": "What is this?", "answer": "A sample flashcard"}
-                ]
-                return fallback_cards_else
-        except Exception as e:
-            print(f"Error parsing flashcards: {e}")
-            # Rename fallback variable (no-redef fix)
-            fallback_cards_err: List[Dict[str, str]] = [
-                {"question": "What is this?", "answer": "A sample flashcard"}
-            ]
-            return fallback_cards_err
+    # Fallback logic removed entirely
+    # print("Falling back to OpenAI API for flashcards...")
+    # ... (removed code related to OpenAI fallback and text extraction for fallback) ...
 
 
 async def generate_quiz(text: str, content_type: str) -> List[Dict[str, Any]]:
@@ -854,7 +795,8 @@ async def generate_quiz(text: str, content_type: str) -> List[Dict[str, Any]]:
     system_instruction = (
         "You are a helpful educational assistant that creates effective quizzes."
     )
-    user_prompt = "Create 5 multiple-choice quiz questions with 4 options each based on this document. Format your response as a JSON array of objects with 'question', 'options' (array of 4 strings), 'correct_option' (integer 0-3), and 'explanation' fields that explains why the answer is correct."
+    # Updated prompt for more questions and variety
+    user_prompt = "Create 10 diverse multiple-choice quiz questions with 4 options each based on this document. Questions should cover different aspects and difficulty levels if possible. Format your response as a JSON array of objects, where each object has the keys: 'question' (string), 'options' (array of 4 strings), 'correct_option' (integer 0-3 representing the index of the correct option), and 'explanation' (string explaining why the answer is correct). Ensure the JSON is well-formed."
 
     try:
         if is_pdf:
@@ -1077,7 +1019,7 @@ async def generate_quiz(text: str, content_type: str) -> List[Dict[str, Any]]:
 
         # Generate quiz questions for each chunk (fewer questions per chunk)
         all_questions = []
-        questions_per_chunk = max(1, int(5 / len(chunks)))
+        questions_per_chunk = max(1, int(10 / len(chunks)))
 
         for i, chunk in enumerate(chunks):
             try:
@@ -1116,14 +1058,14 @@ async def generate_quiz(text: str, content_type: str) -> List[Dict[str, Any]]:
                 }
                 all_questions.append(fallback_question)
 
-        return all_questions[:5]  # Return at most 5 questions
+        return all_questions[:10]  # Return at most 10 questions
     else:
         # Original logic for smaller texts
         response = gemini_client.models.generate_content(
             model=model_name,
             contents=[
                 genai_types.Part.from_text(
-                    f"Based on the following document, create 5 multiple-choice quiz questions with 4 options each. Format as a JSON array of objects with 'question', 'options' (array of 4 strings), 'correct_option' (integer 0-3), and 'explanation' fields.\n\n{text}"
+                    f"Based on the following document, create 10 diverse multiple-choice quiz questions with 4 options each. Questions should cover different aspects and difficulty levels if possible. Format as a JSON array of objects with 'question', 'options' (array of 4 strings), 'correct_option' (integer 0-3), and 'explanation' fields.\n\n{text}"
                 ),
             ],
             config={"temperature": 0.5, "max_output_tokens": 1500},
@@ -1420,7 +1362,236 @@ async def generate_mindmap(text: str, content_type: str) -> Dict[str, Any]:
             return fallback_map_err
 
 
+async def generate_organization_tags(text: str, content_type: str) -> Dict[str, Any]:
+    """
+    Generate organization tags (keywords, topics, categories) from text or PDF.
+    """
+    model_name = "gemini-2.0-flash"
+    is_pdf = content_type == "pdf" or (
+        isinstance(text, str) and text.lower().endswith(".pdf")
+    )
+
+    if is_pdf:
+        if not os.path.exists(text):
+            return {"error": "The PDF file could not be found."}
+    elif not text or text.strip() == "":
+        return {"error": "The document appears to be empty."}
+
+    system_instruction = "You are an AI assistant specialized in analyzing documents and extracting organizational metadata."
+    user_prompt = "Analyze the following document content. Extract key concepts and suggest relevant organizational metadata. Provide your response as a JSON object with the following keys: 'keywords' (a list of 5-10 relevant keywords), 'topics' (a list of 2-4 main topics discussed), and 'suggested_categories' (a list of 1-3 potential categories this document could belong to, e.g., 'Lecture Notes', 'Research Paper', 'Study Guide'). Ensure the JSON is well-formed."
+
+    result_data: Dict[str, Any] = {
+        "keywords": [],
+        "topics": [],
+        "suggested_categories": [],
+    }
+
+    try:
+        contents: List[Any] = []
+        if is_pdf:
+            with open(text, "rb") as pdf_file:
+                pdf_data = pdf_file.read()
+            prompt_with_system = f"{system_instruction}\n\n{user_prompt}"
+            contents = [
+                genai_types.Part.from_bytes(data=pdf_data, mime_type="application/pdf"),
+                prompt_with_system,
+            ]
+        else:
+            prompt_with_system = f"{system_instruction}\n\n{user_prompt}"
+            contents = [prompt_with_system, genai_types.Part.from_text(text)]
+
+        print(
+            f"Sending {'PDF' if is_pdf else 'text'} to Gemini for organization tag generation"
+        )
+        response = gemini_client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config={"temperature": 0.4, "max_output_tokens": 1024},
+        )
+
+        print("Received organization response from Gemini")
+        content = response.text
+
+        try:
+            start = content.find("{")
+            end = content.rfind("}") + 1
+            if start >= 0 and end > start:
+                json_str = content[start:end]
+                parsed_data = json.loads(json_str)
+                result_data["keywords"] = parsed_data.get("keywords", [])
+                result_data["topics"] = parsed_data.get("topics", [])
+                result_data["suggested_categories"] = parsed_data.get(
+                    "suggested_categories", []
+                )
+            else:
+                raise ValueError("No JSON object found in response")
+        except Exception as parse_err:
+            print(f"Error parsing organization tags from Gemini: {parse_err}")
+            result_data["error"] = f"Could not parse organization tags: {parse_err}"
+
+    except Exception as e:
+        print(f"Error generating organization tags: {e}")
+        result_data["error"] = f"Error during generation: {str(e)}"
+
+    return result_data
+
+
 # Helper function (if used elsewhere, otherwise can be local)
 def _extract_json(text: str, structure: str = "object") -> Optional[Any]:
     # ... (Implementation remains the same)
     pass
+
+
+# --- NEW Q&A Generation Function ---
+async def generate_answer_from_context(
+    text: str, content_type: str, question: str
+) -> str:
+    """
+    Generate an answer to a specific question based on the provided text or PDF context.
+    """
+    model_name = "gemini-2.0-flash"
+    is_pdf = content_type == "pdf" or (
+        isinstance(text, str) and text.lower().endswith(".pdf")
+    )
+
+    # --- Input Validation and Preparation ---
+    if is_pdf:
+        print(f"Processing PDF file for Q&A: {text}")
+        if not os.path.exists(text):
+            return "Sorry, I couldn't answer the question because the PDF file could not be found."
+    else:
+        print(f"Processing text content for Q&A, length: {len(text)}")
+        if not text or text.strip() == "":
+            return "Sorry, I couldn't answer the question because the document appears to be empty."
+        # Simple check for potentially problematic content
+        if len(text) < 50 and (
+            "Error extracting" in text or "not fully supported" in text
+        ):
+            return "Sorry, I couldn't answer the question because the document content appears invalid or couldn't be processed correctly."
+
+    if not question or not question.strip():
+        return "Sorry, a valid question is required."
+
+    # --- Prompt Engineering ---
+    system_instruction = (
+        "You are a helpful AI assistant. Answer the user's question based *only* on the provided document context. "
+        "If the answer is not found within the document, explicitly state that the information is not available in the provided text. "
+        "Do not use external knowledge."
+    )
+    # Structure the final prompt clearly separating context and question
+    user_prompt = f"Document Context:\n---\n{{context}}\n---\n\nQuestion: {question}\n\nAnswer based *only* on the document context above:"
+
+    # --- Gemini API Call ---
+    try:
+        contents: List[Any] = []
+        config = {"temperature": 0.2, "max_output_tokens": 1024}
+
+        if is_pdf:
+            # Handle PDF input
+            with open(text, "rb") as pdf_file:
+                pdf_data = pdf_file.read()
+            print(f"Successfully read PDF file with {len(pdf_data)} bytes for Q&A")
+
+            # Gemini uses the Parts API for multimodal input
+            # Combine system instructions, the actual prompt structure, and the PDF data
+            prompt_for_pdf = user_prompt.format(
+                context="[Content of the provided PDF document]"
+            )
+            full_prompt = f"{system_instruction}\n\n{prompt_for_pdf}"
+            contents = [
+                genai_types.Part.from_bytes(data=pdf_data, mime_type="application/pdf"),
+                full_prompt,
+            ]
+            print("Sending PDF and question to Gemini for Q&A")
+
+        else:
+            # Handle text input
+            # Estimate token count (rough approximation: ~4 chars per token)
+            estimated_tokens = len(text) // 4
+            print(f"Estimated token count for Q&A context: {estimated_tokens}")
+
+            # Simple check if text might be too long (adjust limit as needed)
+            # Gemini 1.5 Flash has a large context window, but let's add a basic safeguard
+            # Using 900k as a safe margin, similar to summary
+            if estimated_tokens >= 900000:
+                print(
+                    "Warning: Document text is very large, answer quality might be affected or generation might fail."
+                )
+                # Potentially truncate or use a different strategy for extremely long texts
+                # For now, we'll still try sending it
+
+            # Format the prompt with the actual text context
+            formatted_user_prompt = user_prompt.format(context=text)
+            full_prompt = f"{system_instruction}\n\n{formatted_user_prompt}"
+
+            # For text, just send the combined prompt string
+            contents = [full_prompt]
+            print("Sending text context and question to Gemini for Q&A")
+
+        # --- Execute API Call ---
+        response = gemini_client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config=config,
+            # Adding safety settings to prevent harmful content generation
+            safety_settings=[
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+                },
+            ],
+        )
+
+        print("Received Q&A response from Gemini")
+
+        # --- Response Handling ---
+        # Check for safety blocks or empty responses
+        if not response.candidates:
+            print(
+                "Warning: Gemini response blocked due to safety settings or empty response."
+            )
+            # Check finish_reason if available
+            try:
+                finish_reason = response.prompt_feedback.block_reason
+                if finish_reason:
+                    return f"Sorry, the request was blocked due to: {finish_reason}. Please revise your question or check the document content."
+            except Exception:
+                pass  # Ignore if block_reason isn't available
+            return "Sorry, the AI service returned an empty response. Please try again."
+
+        # Access the generated text
+        answer = response.text
+        return answer.strip()
+
+    except google_exceptions.GoogleAPIError as google_err:
+        # Handle specific Google API errors (e.g., quota limits, invalid arguments)
+        print(f"Error with Gemini API during Q&A: {str(google_err)}")
+        # Provide more specific feedback if possible
+        if "API key not valid" in str(google_err):
+            return "Error: Invalid Google API Key configuration."
+        elif "billing account" in str(google_err):
+            return "Error: Billing issue with Google Cloud project."
+        elif "resource has been exhausted" in str(google_err):
+            return "Error: API quota exceeded. Please try again later."
+        return f"Error generating answer from AI service: {str(google_err)}"
+    except Exception as e:
+        # Catch-all for other unexpected errors
+        print(f"Unexpected error during Q&A generation: {e}")
+        return (
+            f"Sorry, an unexpected error occurred while generating the answer: {str(e)}"
+        )
+
+
+# --- End NEW Q&A Generation Function ---

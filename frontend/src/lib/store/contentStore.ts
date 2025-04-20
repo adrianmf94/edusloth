@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { getUserContent, getContentDetails, uploadContent } from "../api";
 
+// Define SortOrder type
+type SortOrder = "asc" | "desc";
+
 interface Content {
   id: string;
   title: string;
@@ -34,10 +37,21 @@ interface ContentState {
   isLoading: boolean;
   error: string | null;
 
+  // Search and Sort state
+  searchTerm: string;
+  sortBy: string;
+  sortOrder: SortOrder;
+
   // Actions
-  fetchContents: () => Promise<void>;
-  fetchContentDetails: (contentId: string) => Promise<void>;
+  fetchContents: (params?: {
+    searchTerm?: string;
+    sortBy?: string;
+    sortOrder?: SortOrder;
+  }) => Promise<void>;
+  fetchContentDetails: (contentId: string) => Promise<ContentDetail | null>;
   uploadNewContent: (formData: FormData) => Promise<Content | null>;
+  setSearchTerm: (term: string) => void;
+  setSort: (sortBy: string, sortOrder: SortOrder) => void;
 }
 
 export const useContentStore = create<ContentState>((set, get) => ({
@@ -46,10 +60,31 @@ export const useContentStore = create<ContentState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  fetchContents: async () => {
+  // Initialize search/sort state
+  searchTerm: "",
+  sortBy: "created_at",
+  sortOrder: "desc",
+
+  fetchContents: async (params = {}) => {
+    const { searchTerm, sortBy, sortOrder } = get();
+
+    const currentSearchTerm = params.searchTerm ?? searchTerm;
+    const currentSortBy = params.sortBy ?? sortBy;
+    const currentSortOrder = params.sortOrder ?? sortOrder;
+
     set({ isLoading: true, error: null });
     try {
-      const contents = await getUserContent();
+      // Construct query parameters object for the API call
+      const apiParams: { [key: string]: any } = {};
+      if (currentSearchTerm) {
+        apiParams["search"] = currentSearchTerm;
+      }
+      apiParams["sort_by"] = currentSortBy;
+      apiParams["sort_order"] = currentSortOrder;
+
+      console.log("Store - fetchContents - Params sent:", apiParams);
+
+      const contents = await getUserContent(apiParams); // Pass params object
       set({ contents, isLoading: false });
     } catch (error: any) {
       set({
@@ -80,7 +115,6 @@ export const useContentStore = create<ContentState>((set, get) => ({
     try {
       const newContent = await uploadContent(formData);
 
-      // Update the content list with the new content
       set((state) => ({
         contents: [newContent, ...state.contents],
         isLoading: false,
@@ -94,5 +128,17 @@ export const useContentStore = create<ContentState>((set, get) => ({
       });
       return null;
     }
+  },
+
+  setSearchTerm: (term: string) => {
+    console.log("Store - setSearchTerm - New term:", term);
+    set({ searchTerm: term });
+    get().fetchContents();
+  },
+
+  setSort: (sortBy: string, sortOrder: SortOrder) => {
+    console.log("Store - setSort - New sort:", { sortBy, sortOrder });
+    set({ sortBy, sortOrder });
+    get().fetchContents();
   },
 }));
